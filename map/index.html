@@ -1,0 +1,347 @@
+<head>
+	
+	<title>Map of the plane of Delve</title>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="">
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+		}
+		#map {
+			/*width: 600px;*/
+			height: 950px;
+		}
+	</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	
+</head>
+<body>
+
+<div id="map" ></div>
+
+<script>
+	var map = L.map('map', {
+		minZoom:13,
+		maxZoom: 15
+	}).setView([-0.05, 0.0], 13);
+	
+
+	L.tileLayer('jotunheimen_hillshade_dark.png', {		
+	}).addTo(map);
+
+	
+	var LeafIcon = L.Icon.extend({
+		options: {
+			iconSize:     [50, 50],			
+			iconAnchor:   [25, 25],
+			popupAnchor:  [0, -5]
+		}
+	});
+
+	var greenIcon = new LeafIcon({iconUrl: 'green-tile-square-transparent.png'});
+    var redIcon = new LeafIcon({iconUrl: 'red-tile-square-transparent.png'});
+    var orangeIcon = new LeafIcon({iconUrl: 'orange-tile-square-transparent.png'});
+    var blueIcon = new LeafIcon({iconUrl: 'blue-tile-square.png'});
+    var yellowIcon = new LeafIcon({iconUrl: 'yellow-tile-square-transparent.png'});
+    var greyIcon = new LeafIcon({iconUrl: 'grey-tile-square.png'});
+
+    var RoadIcon = L.Icon.extend({
+		options: {
+			iconSize:     [10, 10],			
+			iconAnchor:   [5, 5],
+			popupAnchor:  [0, -1]
+		}
+	});
+
+	var redRoadIcon = new RoadIcon({iconUrl: 'red-road.png'});
+	var blueRoadIcon = new RoadIcon({iconUrl: 'blue-road.png'});
+	var greyRoadIcon = new RoadIcon({iconUrl: 'grey-road.png'});
+
+	var localMapIcon = L.Icon.extend({
+		options: {
+			/*iconSize: [225, 225],
+			iconAnchor: [112,112],*/
+			minNativeZoom: 10,
+			minZoom: 10,
+			iconSize: [75, 75],
+			iconAnchor: [25,25],
+			iconUrl: ''
+		}
+	});
+
+	var localTileMapIcon = new localMapIcon({iconUrl: 'grey-tile-square.png'});
+
+    L.icon = function (options) {
+    	return new L.Icon(options);
+	};
+    
+
+
+    //WRITE A GENERATOR INSTEAD OF MANUALLY CREATING EACH MARKER
+    function generateTile (tileLocationX, tileLocationY, tileStatus, tileTopRoad, tileRightRoad, tileBottomRoad, tileLeftRoad, tileDescription) {
+    	
+    	//Fix stupid coordinate system for text output
+    	var tileLocationYFixed = tileLocationY;
+    		tileLocationYFixed = tileLocationY * (-0.01);
+		var tileLocationXFixed = tileLocationX;
+    		tileLocationXFixed = tileLocationX * (0.01);
+
+    	//Set Road Markers around tiles
+    	var topRoadIcon, rightRoadIcon, bottomRoadIcon, leftRoadIcon;
+    	var topRoadDesc, rightRoadDesc, bottomRoadDesc, leftRoadDesc;
+
+    	//Top Road
+    	switch(tileTopRoad) {
+    		case "open":
+    			topRoadIcon = blueRoadIcon;
+    			topRoadDesc = "I am an open path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			topRoadZIndex = '601';
+    			break;
+    		case "closed":
+    			topRoadIcon = redRoadIcon;
+    			topRoadZIndex = '601';
+    			break;
+    		case "unknown":
+    			topRoadIcon = greyRoadIcon;
+    			topRoadZIndex = '599';
+    			break;
+    		defaut:
+    			break;
+
+    	}
+    	
+    	//Top tiles don't need top road connections
+    	if(tileLocationYFixed != '0') {
+    		var topRoadPlacementY = tileLocationYFixed + 0.005;	
+    		//L.marker([topRoadPlacementY, tileLocationXFixed], {icon: topRoadIcon}).addTo(map).bindPopup(topRoadDesc);
+    		var topRoadMarker = L.marker([topRoadPlacementY, tileLocationXFixed], {icon: topRoadIcon, forceZIndex: topRoadZIndex}); 
+    		topRoadMarker.addTo(map).bindPopup(topRoadDesc); 
+    	}
+
+    	//Bottom Road
+    	switch(tileBottomRoad) {
+    		case "open":
+    			bottomRoadIcon = blueRoadIcon;
+    			bottomRoadDesc = "I am an open path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			bottomRoadZIndex = '600';
+    			break;
+    		case "closed":
+    			bottomRoadIcon = redRoadIcon;    		
+    			bottomRoadDesc = "I am an closed path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			bottomRoadZIndex = '601';
+    			break;
+    		case "unknown":
+    			bottomRoadIcon = greyRoadIcon;
+    			bottomRoadDesc = "Path between areas unknown.";
+    			bottomRoadZIndex = '599';
+    			break;
+    		defaut:
+    			bottomRoadIcon = greyRoadIcon;
+    			bottomRoadZIndex = '599';
+    			break;
+
+    	}
+    	var bottomRoadPlacementY = tileLocationYFixed   - 0.005;	
+    	//L.marker([bottomRoadPlacementY, tileLocationXFixed], {icon: bottomRoadIcon}).addTo(map).bindPopup(bottomRoadDesc);
+    	var bottomRoadMarker = L.marker([bottomRoadPlacementY, tileLocationXFixed], {icon: bottomRoadIcon, forceZIndex: bottomRoadZIndex}); 
+    	bottomRoadMarker.addTo(map).bindPopup(bottomRoadDesc); 
+    	
+
+    	//Right Road
+    	switch(tileRightRoad) {
+    		case "open":
+    			rightRoadIcon = blueRoadIcon;
+    			rightRoadDesc = "I am an open path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			rightRoadZIndex = '600';
+    			break;
+    		case "closed":
+    			rightRoadIcon = redRoadIcon;
+    			rightRoadDesc = "I am a closed open path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			rightRoadZIndex = '601';
+    			break;
+    		case "unknown":
+    			rightRoadIcon = greyRoadIcon;
+    			rightRoadDesc = "Path between areas unknown.";
+    			rightRoadZIndex = '599';
+    		defaut:
+    			break;
+
+    	}    	
+    	var rightRoadPlacementX = tileLocationXFixed + 0.005 ;	
+    	//L.marker([tileLocationYFixed, rightRoadPlacementX], {icon: rightRoadIcon}).addTo(map).bindPopup(rightRoadDesc);
+    	var rightRoadMarker = L.marker([tileLocationYFixed, rightRoadPlacementX], {icon: rightRoadIcon, forceZIndex: rightRoadZIndex}); 
+    	rightRoadMarker.addTo(map).bindPopup(rightRoadDesc);    	
+
+    	//Left Road
+    	switch(tileLeftRoad) {
+    		case "open":
+    			leftRoadIcon = blueRoadIcon;
+    			leftRoadDesc = "I am an open path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			leftRoadZIndex = '600';
+    			break;
+    		case "closed":
+    			leftRoadIcon = redRoadIcon;
+    			leftRoadDesc = "I am a closed path from (" + tileLocationX + ", " + tileLocationY + ").";
+    			leftRoadZIndex = '601';
+    			break;
+    		case "unknown":
+    			leftRoadIcon = greyRoadIcon;
+    			leftRoadDesc = "Path between areas unknown.";
+    			leftRoadZIndex = '599';
+    		defaut:
+    			break;
+
+    	}
+    	var leftRoadPlacementX = tileLocationXFixed - 0.005 ;	
+    	//L.marker([tileLocationYFixed, leftRoadPlacementX], {icon: leftRoadIcon}).addTo(map).bindPopup(leftRoadDesc);
+    	var leftRoadMarker = L.marker([tileLocationYFixed, leftRoadPlacementX], {icon: leftRoadIcon, forceZIndex: leftRoadZIndex});
+    	leftRoadMarker.addTo(map).bindPopup(leftRoadDesc);    
+    	    	
+    	//Set local map picture
+    	var localMapIconName = '(' + tileLocationX + ',' + tileLocationY + ').png';
+    	var localMapIconBounds = [[tileLocationYFixed - 0.005, tileLocationXFixed - 0.005],[tileLocationYFixed + 0.005, tileLocationXFixed + 0.005]];
+    	//testImage('file:///C:/Users/Iota/Desktop/map/'+localMapIconName).then(
+    	testImage(localMapIconName).then(
+    		function fulfilled(img) {
+		        console.log('That image is found and loaded', img);
+		        L.imageOverlay(localMapIconName, localMapIconBounds).addTo(map);
+		    },
+
+		    function rejected() {
+		        console.log('That image was not found');
+		        
+		        //Abyss Layer 422: Yeenoghu's Realm
+		        //If there's no map for these tiles, replace with map of Yennoghu's Realm
+		        if( localMapIconName == '(0,2).png'||
+		        	localMapIconName == '(1,3).png' ||
+		        	localMapIconName == '(2,4).png' ||
+		        	localMapIconName == '(3,5).png' ||
+		        	localMapIconName == '(4,6).png') 
+		        {
+		        	L.imageOverlay("Abyss422.jpg", localMapIconBounds).addTo(map);
+		        }
+		    }
+
+    	);
+		
+    	//Set tile status color overlay and build tile
+    	var statusIcon = "greyIcon";
+    	switch(tileStatus) {
+    		case "cleared":
+    			statusIcon = greenIcon;
+    			break;
+    		case "stabilized":
+    			statusIcon = blueIcon;
+    			break;
+    		case "destabilized":
+    			statusIcon = yellowIcon;
+    			break;
+    		case "active":
+    			statusIcon = orangeIcon;
+    			break;
+    		case "inaccessible":
+    			statusIcon = redIcon;
+    			break;
+    		default:
+    			statusIcon = greyIcon;
+    			break;
+    	}
+    	L.marker([tileLocationYFixed, tileLocationXFixed], {icon: statusIcon}).addTo(map).bindPopup(tileDescription);
+
+    	//var localMapSetter = tileMap;
+    	
+
+    };
+	//Delve Portal Nexus
+	L.imageOverlay("(0,-1).png", [[0.005,-0.005],[0.015,0.005]]).addTo(map);
+	L.marker([0.005, 0.00], {icon: blueRoadIcon}).addTo(map).bindPopup("This pathway into Delve is always open thanks to the modron forces dedicated to the Council of Neutrality.");
+
+	//Game Tiles
+    generateTile(0,0,"cleared","open","open","open","open","Test Description 0,0");
+    generateTile(1,0,"cleared","open","open","open","open","Test Description 1,0");
+    generateTile(0,1,"cleared","open","unknown","open","open","Test Description 0,1");
+    generateTile(0,2,"cleared","open","unknown","open","unknown","Test Description 0,2");
+    generateTile(-1,3,"cleared","unknown","open","unknown","unknown","Test Description -1,3");
+    generateTile(0,3,"cleared","open","open","open","open","Test Description 0,3");
+    generateTile(1,3,"cleared","unknown","open","open","open","Test Description 1,3");
+    generateTile(0,4,"cleared","open","open","open","open","Test Description 0,4");
+    generateTile(0,5,"inaccessible","open","closed","closed","closed","Test Description 0,5");
+    generateTile(0,6,"active","closed","open","unknown","unknown","Test Description 0,6");
+    generateTile(1,4,"cleared","open","open","open","open","Test Description 1,4");
+    generateTile(1,5,"cleared","open","open","open","open","Test Description 1,5");
+    generateTile(2,5,"cleared","unknown","open","unknown","open","Test Description 2,5");
+    generateTile(3,5,"active","unknown","unknown","open","open","Test Description 3,5");
+    generateTile(1,6,"cleared","open","open","open","open","Test Description 1,6");
+    generateTile(-1,0,"cleared","open","open","open","open","Test Description -1,0");
+    generateTile(2,4,"active","open","unknown","unknown","open","Test Description 2,4");    
+    generateTile(-2,0,"destabilized","unknown","open","unknown","unknown","Test Description -2,0");		
+    generateTile(-1,1,"cleared","open","closed","open","open","Test Description -1,1");
+    generateTile(2,0,"cleared","open","open","open","open","Test Description 2,0");
+    generateTile(3,0,"cleared","unknown","unknown","open","open","Test Description 3,0");
+	generateTile(2,1,"cleared","open","open","unknown","unknown","Test Description 2,1");	
+	generateTile(3,1,"cleared","open","unknown","open","open","Test Description 3,1");
+	generateTile(3,2,"cleared","open","open","unknown","unknown","Test Description 3,2");
+	generateTile(4,2,"cleared","unknown","unknown","open","open","Test Description 4,2");
+	generateTile(4,3,"cleared","open","unknown","unknown","unknown","Test Description 4,3");
+	generateTile(3,6,"active","open","open","unknown","open","Test Description 3,6");
+	generateTile(4,6,"active","unknown","unknown","unknown","open","Test Description 4,6");
+	generateTile(1,7,"active","open","unknown","unknown","unknown","Test Description 1,7");   
+	generateTile(2,8,"cleared","open","unknown","open","unknown","Test Description 2,8");
+	generateTile(2,9,"cleared","open","unknown","open","open","Test Description 2,9");
+	generateTile(1,9,"cleared","unknown","open","open","open","Test Description 1,9");
+	generateTile(2,7,"cleared","unknown","open","open","open","Test Description 2,7");
+	generateTile(3,7,"cleared","unknown","unknown","open","open","Test Description 3,7");
+	generateTile(3,8,"cleared","open","unknown","open","unknown","Test Description 3,8");
+	generateTile(3,9,"cleared","open","unknown","unknown","unknown","Test Description 3,9");
+	generateTile(2,10,"active","open","unknown","unknown","unknown","Test Description 2,10");
+	generateTile(2,6,"cleared","unknown","open","open","open","Test Description 2,6");    
+	generateTile(-1,4,"destabilized","unknown","open","unknown","unknown","Test Description -1,4");
+	generateTile(5,2,"cleared","unknown","unknown","unknown","open","Test Description 5,2");
+	generateTile(0,9,"cleared","closed","open","closed","open","DM: Josh <br /> 0,9");
+
+	
+
+
+	$(".leaflet-marker-icon").each(function() {     		
+	    	var roadColor = $(this).attr('src');
+	    	if(roadColor == "red-road.png") {
+	    		$(this).css('z-index','606');
+	    	}
+    	});	
+
+function testImage(url) {
+
+    // Define the promise
+    const imgPromise = new Promise(function imgPromise(resolve, reject) {
+
+        // Create the image
+        const imgElement = new Image();
+
+        // When image is loaded, resolve the promise
+        imgElement.addEventListener('load', function imgOnLoad() {
+            resolve(this);
+        });
+
+        // When there's an error during load, reject the promise
+        imgElement.addEventListener('error', function imgOnError() {
+            reject();
+        })
+
+        // Assign URL
+        imgElement.src = url;
+
+    });
+
+    return imgPromise;
+}
+</script>
+</body>
